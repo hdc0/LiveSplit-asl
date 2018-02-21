@@ -53,7 +53,11 @@ split
 {
 	// Cancel if main state is not "running"
 	const int MainState_Running = 11;
-	if (current.MainState != MainState_Running) return false;
+	if (current.MainState != MainState_Running)
+	{
+		((IDictionary<string, object>)current).Remove("ProgressList");
+		return false;
+	}
 
 	// Read progress list
 	const int SaveSlotSize = 0x2000;
