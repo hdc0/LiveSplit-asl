@@ -4,6 +4,8 @@ state("Croc2", "US")
 	int CurLevel            : 0xA8C48;
 	int CurMap              : 0xA8C4C;
 	int CurType             : 0xA8C50;
+	int InGameState         : 0xB7880;
+	int IsCheatMenuOpen     : 0xB788C;
 	bool IsMapLoaded        : 0xB78C4;
 	int NewMainState        : 0xB7930;
 	int IsNewMainStateValid : 0xB7934;
@@ -17,11 +19,30 @@ state("Croc2", "EU")
 	int CurLevel            : 0xA9C48;
 	int CurMap              : 0xA9C4C;
 	int CurType             : 0xA9C50;
+	int InGameState         : 0xBEA70;
+	int IsCheatMenuOpen     : 0xBEA7C;
 	bool IsMapLoaded        : 0xBEAB4;
 	int NewMainState        : 0xBEB20;
 	int IsNewMainStateValid : 0xBEB24;
 	int MainState           : 0xBEB2C;
 	int DFCrystal5IP        : 0x22AF00;
+}
+
+startup
+{
+	settings.Add("StartAfterSaveSlotChosen", true,
+		"Save slot start");
+	settings.Add("StartOnFirstLevel", false,
+		"IL start");
+	settings.Add("StartOnHubCheat", false,
+		"IW start");
+	settings.Add("SplitOnMapChange", false,
+		"Split on map change");
+
+	// Returns true iff map is "Swap Meet Pete's General Store"
+	vars.IsShopMap = new Func<dynamic, bool>(state =>
+		state.CurTribe >= 1 && state.CurTribe <= 4 &&
+		state.CurLevel == 1 && state.CurMap == 4 && state.CurType == 0);
 }
 
 init
@@ -59,13 +80,45 @@ update
 
 start
 {
-	// Start when main state is in transition from "save slot selection" to "running"
 	const int MainState_ChooseSaveSlot =  2;
 	const int MainState_Running        = 11;
-	return
-		current.MainState == MainState_ChooseSaveSlot &&
+	const int MainState_LevelSelect    = 18;
+
+	// Start when main state is in transition from
+	// "level select" or "save slot selection" to "running"
+	if (settings["StartAfterSaveSlotChosen"] && (
+		current.MainState == MainState_ChooseSaveSlot ||
+		current.MainState == MainState_LevelSelect) &&
 		current.IsNewMainStateValid != 0 &&
-		current.NewMainState == MainState_Running;
+		current.NewMainState == MainState_Running)
+	{
+		return true;
+	}
+
+	// The following start condition checks assume the game is running
+	// and the current map is an ingame tribe and not a cutscene
+	if (current.MainState != MainState_Running ||
+		current.CurTribe < 1 || current.CurTribe > 5 || current.CurType == 3)
+	{
+		return false;
+	}
+
+	if (settings["StartOnFirstLevel"] &&
+		// New map loaded
+		old.InGameState != 0 && current.InGameState == 0 && (
+		// Current map is a non-village map of Dante's World
+		// or a non-village level of the Gobbo tribes
+		current.CurTribe == 5 ? current.CurMap > 1 : current.CurLevel > 1))
+	{
+		return true;
+	}
+
+	if (settings["StartOnHubCheat"] &&
+		// Cheat menu is open while loading a new map
+		current.IsCheatMenuOpen != 0 && current.InGameState == 7)
+	{
+		return true;
+	}
 }
 
 split
@@ -111,6 +164,17 @@ split
 
 			if (old.ProgressList[i] != current.ProgressList[i]) return true;
 		}
+	}
+
+	// Split on map change (except when changing from or to shop map)
+	if (settings["SplitOnMapChange"] && (
+		old.CurTribe != current.CurTribe ||
+		old.CurLevel != current.CurLevel ||
+		old.CurMap   != current.CurMap   ||
+		old.CurType  != current.CurType) &&
+		!vars.IsShopMap(old) && !vars.IsShopMap(current))
+	{
+		return true;
 	}
 }
 
