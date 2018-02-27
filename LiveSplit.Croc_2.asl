@@ -162,7 +162,20 @@ split
 			// Skip village levels
 			if (i % 40 == 4) continue;
 
-			if (old.ProgressList[i] != current.ProgressList[i]) return true;
+			byte ignoreFlags = 0;
+			// Ignore "wheel collected" flags of
+			// "Find the Wheels in the Jungle!" and
+			// "Find the Wheels in the Mine!"
+			if (i == 128 || i == 132) ignoreFlags = 0x30;
+			// Ignore "race entered" flag of "Race Day at Goldrock"
+			if (i == 136) ignoreFlags = 0x40;
+
+			// Split if any non-ignored flags have changed
+			if (((old.ProgressList[i] ^ current.ProgressList[i]) &
+				~ignoreFlags) != 0)
+			{
+				return true;
+			}
 		}
 	}
 
