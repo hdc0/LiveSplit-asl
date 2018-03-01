@@ -105,12 +105,15 @@ start
 
 	if (settings["StartOnFirstLevel"] && (
 		// New map loaded
+		old.InGameState != current.InGameState ||
 		old.CurTribe != current.CurTribe || old.CurLevel != current.CurLevel ||
 		old.CurMap != current.CurMap || old.CurType != current.CurType) &&
 		current.InGameState == 0 && (
 		// Current map is a non-village map of Dante's World
-		// or a non-village level of the Gobbo tribes
-		current.CurTribe == 5 ? current.CurMap > 1 : current.CurLevel > 1))
+		current.CurTribe == 5 ?
+			current.CurMap > 1 :
+			// or a non-village level of the Gobbo tribes
+			(current.CurType != 0 || current.CurLevel > 1)))
 	{
 		return true;
 	}
