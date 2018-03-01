@@ -37,6 +37,11 @@ startup
 	settings.Add("SplitOnMapChange", false,
 		"Split on map change");
 
+	// Returns true iff the current map ID changed
+	vars.HasMapIDChanged = new Func<dynamic, dynamic, bool>((state1, state2) =>
+		state1.CurTribe != state2.CurTribe || state1.CurLevel != state2.CurLevel ||
+		state1.CurMap != state2.CurMap || state1.CurType != state2.CurType);
+
 	// Returns true iff map is "Swap Meet Pete's General Store"
 	vars.IsShopMap = new Func<dynamic, bool>(state =>
 		state.CurTribe >= 1 && state.CurTribe <= 4 &&
@@ -104,13 +109,12 @@ start
 	if (settings["StartOnFirstLevel"] && (
 		// New map loaded
 		old.InGameState != current.InGameState ||
-		old.CurTribe != current.CurTribe || old.CurLevel != current.CurLevel ||
-		old.CurMap != current.CurMap || old.CurType != current.CurType) &&
+		vars.HasMapIDChanged(old, current)) &&
 		current.InGameState == 0 && (
 		// Current map is a non-village map of Dante's World
+		// or a non-village level of the Gobbo tribes
 		current.CurTribe == 5 ?
 			current.CurMap > 1 :
-			// or a non-village level of the Gobbo tribes
 			(current.CurType != 0 || current.CurLevel > 1)))
 	{
 		return true;
@@ -183,11 +187,7 @@ split
 	}
 
 	// Split on map change (except when changing from or to shop map)
-	if (settings["SplitOnMapChange"] && (
-		old.CurTribe != current.CurTribe ||
-		old.CurLevel != current.CurLevel ||
-		old.CurMap   != current.CurMap   ||
-		old.CurType  != current.CurType) &&
+	if (settings["SplitOnMapChange"] && vars.HasMapIDChanged(old, current) &&
 		!vars.IsShopMap(old) && !vars.IsShopMap(current))
 	{
 		return true;
