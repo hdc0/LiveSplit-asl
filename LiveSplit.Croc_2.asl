@@ -34,6 +34,8 @@ startup
 		"IL start");
 	settings.Add("StartOnHubCheat", false,
 		"IW start");
+	settings.Add("SplitOnGoldenGobbo", false,
+		"100% splits");
 	settings.Add("SplitOnMapChange", false,
 		"Split on map change");
 
@@ -164,22 +166,34 @@ split
 	// Other levels: check whether progress has changed
 	else
 	{
-		for (int i = 0; i < ProgressListSize; ++i)
+		for (int tribe = 1; tribe <= 5; ++tribe)
+		for (int level = 1; level <= 7; ++level)
+		for (int type  = 0; type  <= 3; ++type)
 		{
-			// Skip village levels
-			if (i % 40 == 4) continue;
+			// Index into progress list
+			int i = tribe * 40 + level * 4 + type;
 
-			byte ignoreFlags = 0;
-			// Ignore "wheel collected" flags of
-			// "Find the Wheels in the Jungle!" and
-			// "Find the Wheels in the Mine!"
-			if (i == 128 || i == 132) ignoreFlags = 0x30;
-			// Ignore "race entered" flag of "Race Day at Goldrock"
-			if (i == 136) ignoreFlags = 0x40;
+			// Skip unchanged entries
+			if (old.ProgressList[i] == current.ProgressList[i]) continue;
 
-			// Split if any non-ignored flags have changed
-			if (((old.ProgressList[i] ^ current.ProgressList[i]) &
-				~ignoreFlags) != 0)
+			// Split on any progress change for certain levels
+			if (
+				// Dante's Secret World
+				tribe == 5 ||
+				// Boss level or secret level
+				type != 0 ||
+				// "Bride of the Dungeon of Defright" or "Goo Man Chu's Tower"
+				(tribe == 4 && (level == 5 || level == 6)))
+			{
+				return true;
+			}
+
+			// Check for main objective and possibly Golden Gobbo
+			int checkFlags = settings["SplitOnGoldenGobbo"] ? 5 : 1;
+			int currentFlags = current.ProgressList[i] & checkFlags;
+			// Split if all flags are set now and were not set previously
+			if (currentFlags == checkFlags &&
+				currentFlags != (old.ProgressList[i] & checkFlags))
 			{
 				return true;
 			}
