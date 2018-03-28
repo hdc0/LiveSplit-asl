@@ -6,6 +6,7 @@ state("Croc2", "US")
 	int CurType             : 0xA8C50;
 	int InGameState         : 0xB7880;
 	int IsCheatMenuOpen     : 0xB788C;
+	bool IsMapLoaded        : 0xB78C4;
 	int NewMainState        : 0xB7930;
 	int IsNewMainStateValid : 0xB7934;
 	int MainState           : 0xB793C;
@@ -20,6 +21,7 @@ state("Croc2", "EU")
 	int CurType             : 0xA9C50;
 	int InGameState         : 0xBEA70;
 	int IsCheatMenuOpen     : 0xBEA7C;
+	bool IsMapLoaded        : 0xBEAB4;
 	int NewMainState        : 0xBEB20;
 	int IsNewMainStateValid : 0xBEB24;
 	int MainState           : 0xBEB2C;
@@ -211,5 +213,7 @@ split
 isLoading
 {
 	const int MainState_Running = 11;
-	return current.MainState == MainState_Running && current.InGameState == 7;
+	return current.MainState == MainState_Running && (
+		current.InGameState == 6 || current.InGameState == 7 ||
+		!current.IsMapLoaded);
 }
