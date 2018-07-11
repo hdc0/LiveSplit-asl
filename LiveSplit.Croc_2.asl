@@ -38,6 +38,8 @@ startup
 		"IW start");
 	settings.Add("SplitOnGoldenGobbo", false,
 		"100% splits");
+	settings.Add("SplitOnDanteCrystals", false,
+		"Split on collecting crystals in Dante's World");
 	settings.Add("SplitOnMapChange", false,
 		"Split on map change");
 
@@ -176,12 +178,11 @@ split
 			int i = tribe * 40 + level * 4 + type;
 
 			// Skip unchanged entries
-			if (old.ProgressList[i] == current.ProgressList[i]) continue;
+			int oldFlags = old.ProgressList[i], newFlags = current.ProgressList[i];
+			if (oldFlags == newFlags) continue;
 
 			// Split on any progress change for certain levels
 			if (
-				// Dante's Secret World
-				tribe == 5 ||
 				// Boss level or secret level
 				type != 0 ||
 				// "Bride of the Dungeon of Defright" or "Goo Man Chu's Tower"
@@ -190,14 +191,34 @@ split
 				return true;
 			}
 
-			// Check for main objective and possibly Golden Gobbo
-			int checkFlags = settings["SplitOnGoldenGobbo"] ? 5 : 1;
-			int currentFlags = current.ProgressList[i] & checkFlags;
-			// Split if all flags are set now and were not set previously
-			if (currentFlags == checkFlags &&
-				currentFlags != (old.ProgressList[i] & checkFlags))
+			// Dante's World
+			if (tribe == 5)
 			{
-				return true;
+				if (settings["SplitOnDanteCrystals"])
+				{
+					return true;
+				}
+				else
+				{
+					const int CrystalFlags = 0x1f;
+					if ((oldFlags & ~CrystalFlags) != (newFlags & ~CrystalFlags))
+					{
+						return true;
+					}
+				}
+			}
+			// Other levels
+			else
+			{
+				// Check for main objective and possibly Golden Gobbo
+				int checkFlags = settings["SplitOnGoldenGobbo"] ? 5 : 1;
+				int currentFlags = newFlags & checkFlags;
+				// Split if all flags are set now and were not set previously
+				if (currentFlags == checkFlags &&
+					currentFlags != (oldFlags & checkFlags))
+				{
+					return true;
+				}
 			}
 		}
 	}
