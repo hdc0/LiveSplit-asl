@@ -42,6 +42,8 @@ startup
 		"Split on collecting crystals in Dante's World");
 	settings.Add("SplitOnMapChange", false,
 		"Split on map change");
+	settings.Add("RequireUnusedBossWarps", true,
+		"Do not start if any boss warp has already been used");
 
 	// Returns true iff the current map ID changed
 	vars.HasMapIDChanged = new Func<dynamic, dynamic, bool>((state1, state2) =>
@@ -66,6 +68,7 @@ init
 			addrScriptMgr = 0xB78BC;
 			vars.AddrSaveSlots      = baseAddr + 0x2040C0;
 			vars.AddrCurSaveSlotIdx = baseAddr + 0x2220FC;
+			vars.AddrUsedBossWarps  = baseAddr + 0x222D50;
 			vars.DFCrystal5FinalIP  = 0x1741C8;
 			break;
 		case 0x242000:
@@ -73,6 +76,7 @@ init
 			addrScriptMgr = 0xBEAAC;
 			vars.AddrSaveSlots      = baseAddr + 0x20B2B0;
 			vars.AddrCurSaveSlotIdx = baseAddr + 0x2292EC;
+			vars.AddrUsedBossWarps  = baseAddr + 0x229F40;
 			vars.DFCrystal5FinalIP  = 0x174210;
 			break;
 		default:
@@ -92,6 +96,13 @@ start
 	const int MainState_ChooseSaveSlot =  2;
 	const int MainState_Running        = 11;
 	const int MainState_LevelSelect    = 18;
+
+	// Do not start timer if any boss warp has already been used
+	if (settings["RequireUnusedBossWarps"] &&
+		memory.ReadValue<int>((IntPtr)vars.AddrUsedBossWarps) != 0)
+	{
+		return false;
+	}
 
 	// Start when main state is in transition from
 	// "level select" or "save slot selection" to "running"
