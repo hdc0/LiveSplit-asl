@@ -36,6 +36,8 @@ startup
 		"IL start");
 	settings.Add("StartOnHubCheat", false,
 		"IW start");
+	settings.Add("SplitOnSMP", false,
+		"IW stop");
 	settings.Add("SplitOnGoldenGobbo", false,
 		"100% splits");
 	settings.Add("SplitOnDanteCrystals", false,
@@ -167,6 +169,17 @@ split
 
 	// Cancel if old progress list is not available
 	if (!((IDictionary<string, object>)old).ContainsKey("ProgressList")) return false;
+
+	// Thermospore was here :)
+	// Split on entering SMP's shop in Sailor, Cossack, or Caveman after main boss completion
+	if (settings["SplitOnSMP"] &&
+		current.CurLevel == 1 &&
+		(current.ProgressList[current.CurTribe * 40 + 2 * 4 + 1] & 1) != 0 &&
+		current.CurTribe >= 1 && current.CurTribe <= 3 &&
+		old.CurMap == 1 && current.CurMap == 4)
+	{
+		return true;
+	}
 
 	// "Dante's Final Fight": Split when last crystal is placed
 	if (current.CurTribe == 4 && current.CurLevel == 2 &&
