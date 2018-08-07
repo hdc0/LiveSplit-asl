@@ -169,9 +169,9 @@ split
 
 	// Cancel if old progress list is not available
 	if (!((IDictionary<string, object>)old).ContainsKey("ProgressList")) return false;
-	
-	// Thermospore was here!
-	// Split when entering SMP shop in sailor, cossack, or caveman after boss completion
+
+	// Thermospore was here :)
+	// Split on entering SMP's shop in Sailor, Cossack, or Caveman after main boss completion
 	if (settings["SplitOnSMP"] &&
 		current.CurLevel == 1 &&
 		(current.ProgressList[current.CurTribe * 40 + 2 * 4 + 1] & 1) != 0 &&
@@ -180,7 +180,7 @@ split
 	{
 		return true;
 	}
-	
+
 	// "Dante's Final Fight": Split when last crystal is placed
 	if (current.CurTribe == 4 && current.CurLevel == 2 &&
 		current.CurMap == 1 && current.CurType == 1)
