@@ -97,7 +97,7 @@ start
 {
 	// Reset progress list
 	((IDictionary<string, object>)current).Remove("ProgressList");
-	
+
 	const int MainState_ChooseSaveSlot =  2;
 	const int MainState_Running        = 11;
 	const int MainState_LevelSelect    = 18;
