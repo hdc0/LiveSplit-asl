@@ -99,6 +99,9 @@ start
 	const int MainState_Running        = 11;
 	const int MainState_LevelSelect    = 18;
 
+	// Reset progress list
+	((IDictionary<string, object>)current).Remove("ProgressList");
+
 	// Do not start timer if any boss warp has already been used
 	if (settings["RequireUnusedBossWarps"] &&
 		memory.ReadValue<int>((IntPtr)vars.AddrUsedBossWarps) != 0)
