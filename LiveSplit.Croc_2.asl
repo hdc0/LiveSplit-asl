@@ -95,6 +95,9 @@ update
 
 start
 {
+	// Reset progress list
+	((IDictionary<string, object>)current).Remove("ProgressList");
+	
 	const int MainState_ChooseSaveSlot =  2;
 	const int MainState_Running        = 11;
 	const int MainState_LevelSelect    = 18;
@@ -218,10 +221,12 @@ split
 			// Dante's World
 			if (tribe == 5)
 			{
-				if (settings["SplitOnDanteCrystals"])
+				// Split on Crystal
+				if (settings["SplitOnDanteCrystals"] && current.CurMap != 1)
 				{
 					return true;
 				}
+				// Split on Egg
 				else
 				{
 					const int CrystalFlags = 0x1f;
