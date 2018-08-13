@@ -10,6 +10,7 @@ state("Croc2", "US")
 	int NewMainState        : 0xB7930;
 	int IsNewMainStateValid : 0xB7934;
 	int MainState           : 0xB793C;
+	int GobboCounter        : 0x12AEE0;
 	int DFCrystal5IP        : 0x223D10;
 }
 
@@ -25,6 +26,7 @@ state("Croc2", "EU")
 	int NewMainState        : 0xBEB20;
 	int IsNewMainStateValid : 0xBEB24;
 	int MainState           : 0xBEB2C;
+	int GobboCounter        : 0x1320D0;
 	int DFCrystal5IP        : 0x22AF00;
 }
 
@@ -44,6 +46,8 @@ startup
 		"Split on collecting crystals in Dante's World");
 	settings.Add("SplitOnMapChange", false,
 		"Split on map change");
+	settings.Add("SplitOnBabies", false,
+		"Split on 7, 15, 21, and 26 babies");
 	settings.Add("RequireUnusedBossWarps", true,
 		"Do not start if any boss warp has already been used");
 
@@ -180,6 +184,18 @@ split
 		(current.ProgressList[current.CurTribe * 40 + 2 * 4 + 1] & 1) != 0 &&
 		current.CurTribe >= 1 && current.CurTribe <= 3 &&
 		old.CurMap == 1 && current.CurMap == 4)
+	{
+		return true;
+	}
+
+	// Split on main babies areas
+	if (current.CurTribe == 4 &&
+		settings["SplitOnBabies"] &&
+		old.GobboCounter != current.GobboCounter && (
+		current.GobboCounter == 7 ||
+		current.GobboCounter == 15 ||
+		current.GobboCounter == 21 ||
+		current.GobboCounter == 26))
 	{
 		return true;
 	}
