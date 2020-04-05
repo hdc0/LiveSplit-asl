@@ -16,6 +16,15 @@ state("tarzan", "PC, French")
 	int   InGame           : 0x836DF4;
 }
 
+state("tarzan", "PC, Cast")
+{
+	int   ClaytonCountdown : 0x10BF24;
+	byte  ReachedUmbrella  : 0x10C657;
+	short SaborDefeats     : 0x1233C0;
+	byte  Level            : 0x12385D;
+	int   InGame           : 0x836E34;
+}
+
 state("tarzan", "PC, German")
 {
 	int   ClaytonCountdown : 0x10BEB4;
@@ -23,6 +32,15 @@ state("tarzan", "PC, German")
 	short SaborDefeats     : 0x123350;
 	byte  Level            : 0x1237ED;
 	int   InGame           : 0x836DC4;
+}
+
+state("tarzan", "PC, Italian")
+{
+	int   ClaytonCountdown : 0x10C0D4;
+	byte  ReachedUmbrella  : 0x10C807;
+	short SaborDefeats     : 0x123570;
+	byte  Level            : 0x123A0D;
+	int   InGame           : 0x836FE4;
 }
 
 state("tarzan", "PC, US, Patched")
@@ -130,7 +148,9 @@ init
 	{
 		{ 0x374D3468, 0x0E8, "PC, US" },
 		{ 0x38033A56, 0x0E8, "PC, French" },
+		{ 0x3805AF46, 0x0E8, "PC, Cast" },
 		{ 0x380EF2A5, 0x0E8, "PC, German" },
+		{ 0x38102BC9, 0x0E8, "PC, Italian" },
 		{ 0x38C4E96E, 0x100, "PC, US, Patched" },
 		{ 0x38C7B9BE, 0x0F0, "PC, UK, Patched" },
 		{ 0x38C7C7B7, 0x0F0, "PC, Danish, Patched" },
