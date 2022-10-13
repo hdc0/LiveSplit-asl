@@ -4,8 +4,8 @@ state("bugs") {}
 
 init
 {
-	vars.Initialized = false;
 	(vars as IDictionary<string, object>).Clear();
+	vars.Initialized = false;
 
 	var mainModule = modules.First();
 	var scanner = new SignatureScanner(game, mainModule.BaseAddress, mainModule.ModuleMemorySize);
