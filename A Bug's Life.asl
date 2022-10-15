@@ -149,7 +149,7 @@ start
 split
 {
 	var levelDone = vars.LevelDone; levelDone.Update(game);
-	return levelDone.Old == 0 && levelDone.Current == 1;
+	return levelDone.Old != 1 && levelDone.Current == 1;
 }
 
 isLoading
