@@ -1,5 +1,4 @@
-state("Croc2", "US")
-{
+state("Croc2", "US") {
 	int CrocX               : 0xA8C3C, 0x14, 0x28, 0x2c;
 	int CrocY               : 0xA8C3C, 0x14, 0x28, 0x30;
 	int CrocZ               : 0xA8C3C, 0x14, 0x28, 0x34;
@@ -8,7 +7,7 @@ state("Croc2", "US")
 	int CurMap              : 0xA8C4C;
 	int CurType             : 0xA8C50;
 	int InGameState         : 0xB7880;
-	int IsCheatMenuOpen     : 0xB788C;
+	bool IsCheatMenuOpen     : 0xB788C;
 	bool IsMapLoaded        : 0xB78C4;
 	int NewMainState        : 0xB7930;
 	int IsNewMainStateValid : 0xB7934;
@@ -21,8 +20,7 @@ state("Croc2", "US")
 	int DFCrystal5IP        : 0x223D10;
 }
 
-state("Croc2", "EU")
-{
+state("Croc2", "EU") {
 	int CrocX               : 0xA9C3C, 0x14, 0x28, 0x2c;
 	int CrocY               : 0xA9C3C, 0x14, 0x28, 0x30;
 	int CrocZ               : 0xA9C3C, 0x14, 0x28, 0x34;
@@ -31,7 +29,7 @@ state("Croc2", "EU")
 	int CurMap              : 0xA9C4C;
 	int CurType             : 0xA9C50;
 	int InGameState         : 0xBEA70;
-	int IsCheatMenuOpen     : 0xBEA7C;
+	bool IsCheatMenuOpen     : 0xBEA7C;
 	bool IsMapLoaded        : 0xBEAB4;
 	int NewMainState        : 0xBEB20;
 	int IsNewMainStateValid : 0xBEB24;
@@ -44,8 +42,40 @@ state("Croc2", "EU")
 	int DFCrystal5IP        : 0x22AF00;
 }
 
-startup
+state("croc2", "HD-STEAM")
 {
+	// int CrocX               : 0xA8C3C, 0x14, 0x28, 0x2c;
+	// int CrocY               : 0xA8C3C, 0x14, 0x28, 0x30;
+	// int CrocZ               : 0xA8C3C, 0x14, 0x28, 0x34;
+	int CurTribe            : 0xBC87D4;
+	int CurLevel            : 0xBC87D8;
+	int CurMap              : 0xBC87DC;
+	int CurType             : 0xBC87E0;
+	int InGameState         : 0xB90D30;
+	bool IsCheatMenuOpen     : 0xB8E0F8;
+		// OG (int):  menu closed = 0, open = 1
+		// HD (int):  menu closed = 0, open = 0xFFFFFFFF (or, -1)
+		// Switching this to a bool, so behaviour is the same between OG and HD
+	bool IsMapLoaded        : 0xBCE790;
+		// FIXME: candidate. need to verify. 0xBCE894 also looks promising
+	int NewMainState        : 0xB90D3C;
+	// int IsNewMainStateValid : 0xB7934;
+		// FIXME: find this for save slot start, if you can
+	int MainState           : 0xB5D5E8; 
+	// int Inputs              : 0x12A590;
+		// only used for the "Start on any input" option
+		// browse memory around 0xBC4B54 for some candidates
+	int GemCounter          : 0xBC4DAC;
+	int GobboCounter        : 0xBC4C6C;
+	// int AllowReturnToHub    : 0x12AEFC;
+		// only used for wrong warp detection (which I don't think is even possible in HD?)
+	int CurSaveSlotIdx      : 0xB4D5A8;
+		// FIXME: do we use this for anything in HD? if not, then let's just comment it out
+	// int DFCrystal5IP        : 0x223D10;
+		// FIXME: this is gonna be important for any% end split, I assume
+}
+
+startup {
 	// Start
 	settings.Add("RequireUnusedBossWarps", true,
 		"Do not start if any boss warp has already been used");
@@ -125,6 +155,10 @@ startup
 		"PrevTribeSSX changes", "DebugOutput");
 		settings.Add("DO_MainState", true,
 		"MainState changes", "DebugOutput");
+		settings.Add("DO_NewMainState", true,
+		"NewMainState changes", "DebugOutput");
+		settings.Add("DO_IsNewMainStateValid", true,
+		"IsNewMainStateValid changes", "DebugOutput");
 		settings.Add("DO_InGameState", true,
 		"InGameState changes", "DebugOutput");
 		settings.Add("DO_IsCheatMenuOpen", true,
@@ -200,15 +234,17 @@ startup
 		curState.PrevTribeSSX == 0);
 }
 
-init
-{
+init {
 	var firstModule = modules.First();
 	var baseAddr = firstModule.BaseAddress;
 	int addrScriptMgr;
+
+	// Detect game version
 	switch (firstModule.ModuleMemorySize)
 	{
 		case 0x23A000:
 			version = "US";
+			vars.era = "OG";
 			addrScriptMgr = 0xB78BC;
 			vars.AddrCurTribe       = baseAddr + 0xA8C44;
 			vars.AddrCurLevel       = baseAddr + 0xA8C48;
@@ -218,8 +254,10 @@ init
 			vars.AddrUsedBossWarps  = baseAddr + 0x222D50;
 			vars.DFCrystal5FinalIP  = 0x1741C8;
 			break;
+
 		case 0x242000:
 			version = "EU";
+			vars.era = "OG";
 			addrScriptMgr = 0xBEAAC;
 			vars.AddrCurTribe       = baseAddr + 0xA9C44;
 			vars.AddrCurLevel       = baseAddr + 0xA9C48;
@@ -229,11 +267,101 @@ init
 			vars.AddrUsedBossWarps  = baseAddr + 0x229F40;
 			vars.DFCrystal5FinalIP  = 0x174210;
 			break;
+
+		case 0xC80000:
+			version = "HD-STEAM";
+			vars.era = "HD";
+			addrScriptMgr = 0x0;
+				// FIXME: temp putting 0
+			vars.AddrCurTribe       = baseAddr + 0xBC87D4;
+			vars.AddrCurLevel       = baseAddr + 0xBC87D8;
+			vars.AddrCurMap         = baseAddr + 0xBC87DC;
+			vars.AddrCurType        = baseAddr + 0xBC87E0;
+			vars.AddrSaveSlot       = baseAddr + 0xBA9878;
+				// Your save data seems to be stored here; it gets saved to:
+				// `\AppData\Roaming\Croc 2\saves\76561198041092660\game_X.sav`
+				// where X is replaced with the save slot #
+			// vars.AddrUsedBossWarps  = baseAddr + 0x222D50;
+				// FIXME: surely this bug is fixed in HD?
+			// vars.DFCrystal5FinalIP  = 0x1741C8;
+				// FIXME: this is gonna be important for ending split
+			// FIXME: in addition to the traditional CurWAD addresses, we found these NewWAD addresses, which contain the WAD being loaded. as of writing, they are used for HD save slot start logic. think about if these could be useful for race condition prevention (or for other parts of the autosplitter). also, are they present in og?
+			vars.AddrNewTribe       = baseAddr + 0xBA9B04;
+			vars.AddrNewLevel       = baseAddr + 0xBA9B08;
+			vars.AddrNewMap         = baseAddr + 0xBA9B0C;
+			vars.AddrNewType        = baseAddr + 0xBA9B10;
+			break;
+
 		default:
 			return;
 	}
 
-	vars.ScriptCodeStart = new DeepPointer(addrScriptMgr, 0x1C);
+	// Set era dependent constants
+	// FIXME: compare MainState behaviour with og
+	// - timing of MainState changes, relative to wad ID etc (particularly Running)
+	// - value of MainState in cutscene vs main gameplay vs title screen demos
+	switch ((string)vars.era)
+	{
+		case "OG":
+			vars.ProgressListOffset = 0x2d0;
+
+			vars.MainState_OpeningLogos   =  8;
+			// vars.MainState_Logos2IntroCS doesn't appear to be a thing in og
+			vars.MainState_Running        = 11;
+			vars.MainState_IntroCS2MM     = 19;
+			vars.MainState_MainMenu       = 16;
+			vars.MainState_Demo           =  5;
+			vars.MainState_Options        = 14; // Options screen (only the one on main menu, not in-game)
+			// vars.MainState_Croc2pedia isn't a thing, ofc
+			vars.MainState_LevelSelect    = 18; // This is the blue screen where you select a wad ID (only accessable through poking memory)
+			vars.MainState_NGInitials     =  9; // New Game - entering initials
+			vars.MainState_NGSaveSlot     =  2; // New Game - select save slot
+			vars.MainState_LGSaveSlot     =  1; // Load Game - select save slot
+			vars.MainState_ContinueYN     =  3; // "Continue? Yes / No" screen when you game over
+			vars.MainState_GameOver       = 12; // "Game Over" screen (when you run out of lives and select "No" on the "Continue?" screen, or when you exit the game from the pause menu)
+			vars.MainState_Credits		  =  4;
+			vars.MainState_ExitGame       =  6;
+			break;
+		
+		case "HD":
+			vars.ProgressListOffset = 0x30C;
+
+			vars.MainState_OpeningLogos   = 20;
+			vars.MainState_Logos2IntroCS  =  1; // Transition from the intro Logos -> Intro CutScene where the scientist is taken by dante
+			vars.MainState_Running        =  4; // Includes both active gameplay and cutscenes
+				// Confirmed cutscenes:
+				// Intro scientist cutscene (both when booting game, and as a main menu attract screen)
+				// Cutscene on new save where Croc gets launched
+				// FIXME: ...oh is it simply all cutscenes lol?
+			vars.MainState_IntroCS2MM     = 15; // Transition from the scientist intro cutscene -> Main Menu
+			vars.MainState_MainMenu       =  3;
+			vars.MainState_Demo           =  5; // Demos that run as an attract screen on the main menu
+			// vars.MainState_Options for HD is just on the main menu
+			vars.MainState_Croc2pedia     = 18;
+			// vars.MainState_LevelSelect    = 14; FIXME: is this still in HD? could be 14? see: https://tcrf.net/Croc_2_(Windows,_PlayStation)#Level_Select
+			// vars.MainState_NGInitials |
+			// vars.MainState_NGSaveSlot | for HD, this all takes place on the main menu
+			// vars.MainState_LGSaveSlot |
+			vars.MainState_ContinueYN     = 09;
+			// vars.MainState_GameOver is not in HD; selecting no on ContinueYN takes you straight to main menu
+			vars.MainState_Credits		  = 12;
+			// vars.MainState_ExitGame doesn't seem to be a thing; the game just quits
+			break;
+
+		default:
+			return;
+	}
+
+	// FIXME; temp workaround for unknown address
+	// this is important! used for ending split on dante yellow crystal
+	if(version == "HD-STEAM")
+	{
+		print("FIXME: skipping vars.ScriptCodeStart");
+	}
+	else
+	{
+		vars.ScriptCodeStart = new DeepPointer(addrScriptMgr, 0x1C);
+	}
 	
 	// Initialize variable for speed display
 	vars.curMS = 0;
@@ -242,8 +370,7 @@ init
 	vars.customCurrentVarsAreInitialized = false;
 }
 
-update
-{
+update {
 	// ==== Race condition detection + correction ====
 	//
 	// This is done first thing in the cycle, to prevent corrupt map IDs from leaking in
@@ -372,14 +499,22 @@ update
 		vars.customCurrentVarsAreInitialized = true;
 	}
 	
-	// Update addrSaveSlot
-	const int SaveSlotSize = 0x2000;
-	vars.addrSaveSlot = vars.AddrSaveSlots + (current.CurSaveSlotIdx * SaveSlotSize);
-	
-	// Update PrevTribeSSX
-	const int offsetPrevTribeSSX = 0x2B4;
-	var addrPrevTribeSSX = vars.addrSaveSlot + offsetPrevTribeSSX;
-	current.PrevTribeSSX = memory.ReadValue<int>((IntPtr)addrPrevTribeSSX);
+	// FIXME; temp workaround
+	if (version == "HD-STEAM")
+	{
+		// print("FIXME: skipping updating addrSaveSlot / PrevTribeSSX");
+	}
+	else
+	{
+		// Update addrSaveSlot
+		const int SaveSlotSize = 0x2000;
+		vars.AddrSaveSlot = vars.AddrSaveSlots + (current.CurSaveSlotIdx * SaveSlotSize);
+		
+		// Update PrevTribeSSX
+		const int offsetPrevTribeSSX = 0x2B4;
+		var addrPrevTribeSSX = vars.AddrSaveSlot + offsetPrevTribeSSX;
+		current.PrevTribeSSX = memory.ReadValue<int>((IntPtr)addrPrevTribeSSX);
+	}
 	
 	// Update WadB4GH
 	if (vars.HasMapIDChanged(old, current) &&
@@ -457,6 +592,24 @@ update
 				        " -> " + current.CurType.ToString() +
 				          " (" + currentPlusAlphaCurType.ToString() + ")";
 		}
+
+		// // NewWad changes
+		// // FIXME: temporary
+		// if (settings["DO_MapChanges"] && vars.era == "HD" && 
+		// 	(old.NewTribe != current.NewTribe ||
+		// 	old.NewLevel != current.NewLevel ||
+		// 	old.NewMap != current.NewMap ||
+		// 	old.NewType != current.NewType))
+		// {
+		// 	debugText += "\n┃NewTribe: " + old.NewTribe.ToString() +
+		// 		           " -> " + current.NewTribe.ToString() +
+		// 		"\n┃NewLevel: " + old.NewLevel.ToString() +
+		// 		           " -> " + current.NewLevel.ToString() +
+		// 		"\n┃NewMap:   " + old.NewMap.ToString() +
+		// 		           " -> " + current.NewMap.ToString() +
+		// 		"\n┃NewType:  " + old.NewType.ToString() +
+		// 		           " -> " + current.NewType.ToString();
+		// }
 		
 		// WadB4GH changes
 		if (settings["DO_WadB4GH"] &&
@@ -476,6 +629,7 @@ update
 		}
 		
 		// PrevTribeSSX changes
+		// FIXME: how to handle this for HD? does PrevTribeSSX even exist in HD?
 		if (settings["DO_PrevTribeSSX"] &&
 			old.PrevTribeSSX != current.PrevTribeSSX)
 		{
@@ -489,6 +643,23 @@ update
 		{
 			debugText += "\n┃MainState: " + old.MainState.ToString() +
 				" -> " + current.MainState.ToString();
+		}
+		
+		// NewMainState changes
+		if (settings["DO_NewMainState"] &&
+			old.NewMainState != current.NewMainState)
+		{
+			debugText += "\n┃NewMainState: " + old.NewMainState.ToString() +
+				" -> " + current.NewMainState.ToString();
+		}
+		
+		// IsNewMainStateValid changes
+		// FIXME: temporarily only for OG, cos i dont know the hd address yet
+		if (settings["DO_IsNewMainStateValid"] && vars.era == "OG" &&
+			old.IsNewMainStateValid != current.IsNewMainStateValid)
+		{
+			debugText += "\n┃IsNewMainStateValid: " + old.IsNewMainStateValid.ToString() +
+				" -> " + current.IsNewMainStateValid.ToString();
 		}
 		
 		// InGameState changes
@@ -509,6 +680,7 @@ update
 		
 		// AllowReturnToHub changes
 		if (settings["DO_AllowReturnToHub"] &&
+			vars.era == "OG" && // FIXME: how to handle this option for HD?
 			old.AllowReturnToHub != current.AllowReturnToHub)
 		{
 			debugText += "\n┃AllowReturnToHub: " + old.AllowReturnToHub.ToString() +
@@ -526,52 +698,78 @@ update
 		// Print output
 		if (debugText != "")
 		{
-			print("┏━━━━━━━━━━━━━┓" +
+			print("┏━━━━━━ " + vars.era.ToString() + " ━━━━━━━┓" +
 				debugText +
-				"\n┗━━━━━━━━━━━━━┛");
+				"\n┗━━━━━━━━━━━━━━━┛");
 		}
 	}
 	
 	return version != "";
 }
 
-start
-{
-	const int MainState_ChooseSaveSlot =  2;
-	const int MainState_Running        = 11;
-	const int MainState_LevelSelect    = 18;
-
+start {
 	// Reset progress list
 	((IDictionary<string, object>)current).Remove("ProgressList");
 
 	// Do not start timer if any boss warp has already been used
-	if (settings["RequireUnusedBossWarps"] &&
+	// FIXME: I'm ASSUMING this is fixed in HD. and if so, can we hide this from the autosplitter settings menu?
+	if (vars.era == "OG" &&
+		settings["RequireUnusedBossWarps"] &&
 		memory.ReadValue<int>((IntPtr)vars.AddrUsedBossWarps) != 0)
 	{
 		return false;
 	}
 
-	// Start when main state is in transition from
-	// "level select" or "save slot selection" to "running"
-	if (settings["SaveSlotStart"] && (
-		current.MainState == MainState_ChooseSaveSlot ||
-		current.MainState == MainState_LevelSelect) &&
-		current.IsNewMainStateValid != 0 &&
-		current.NewMainState == MainState_Running)
+	// Start on new game
+	if (settings["SaveSlotStart"])
 	{
-		return true;
+		switch ((string)vars.era)
+		{
+			case "OG":
+				// When main state is in transition from new game save slot screen -> running
+				if (current.MainState == vars.MainState_NGSaveSlot &&
+					current.IsNewMainStateValid != 0 &&
+					current.NewMainState == vars.MainState_Running)
+				{
+					return true;
+				}
+				break;
+
+			case "HD":
+				// MainState_NGSaveSlot doesn't exist in HD
+				// (because the new game / load game screens were merged with the main menu)
+				// So instead, we can check the new game cutscene is being loaded
+				int NewTribe = memory.ReadValue<int>((IntPtr)vars.AddrNewTribe);
+				int NewLevel = memory.ReadValue<int>((IntPtr)vars.AddrNewLevel);
+				int NewMap   = memory.ReadValue<int>((IntPtr)vars.AddrNewMap);
+				int NewType  = memory.ReadValue<int>((IntPtr)vars.AddrNewType);
+				if (current.MainState == vars.MainState_MainMenu &&
+					// current.IsNewMainStateValid != 0 &&
+					current.NewMainState == vars.MainState_Running &&
+					NewTribe == 1 && NewLevel == 1 && NewMap == 2 && NewType == 3)
+				{
+					return true;
+				}
+				break;
+
+				// Have yet to find the HD address for IsNewMainStateValid. Would be nice to include it in the logic here to be safe (because, yeah, sometimes NewMainState gets stuck on invalid values while on the main menu). However, we seem fine without it.
+
+			default:
+				return false;
+		}
 	}
 
 	// The following start condition checks assume the game is running
 	// and the current map is an ingame tribe and not a cutscene
-	if (current.MainState != MainState_Running ||
+	if (current.MainState != vars.MainState_Running ||
 		current.CurTribe < 1 || current.CurTribe > 5 || current.CurType == 3)
 	{
 		return false;
 	}
 	
 	// Start on any input
-	if (settings["InputStart"] &&
+	// FIXME: get this working on HD
+	if (settings["InputStart"] && vars.era == "OG" &&
 		current.Inputs != old.Inputs)
 	{
 		return true;
@@ -596,11 +794,12 @@ start
 		!vars.IsGobboHub(old) && vars.IsGobboHub(current) &&
 		// disallow starting on cheat menu warp
 		// (technically a valid SMP->__ segment start, but more intrusive than useful)
-		current.IsCheatMenuOpen == 0 &&
+		!current.IsCheatMenuOpen &&
 		// disallow starting after the opening cutscene when you start a new game
 		!vars.IsThisMap(old, 1, 1, 2, 3) &&
 		// disallow starting after loading a save
-		!vars.IsThisMap(old, 0, 0, 4, 3) &&
+		!vars.IsThisMap(old, 0, 0, 4, 3) && // OG (save slot screen)
+		!vars.IsThisMap(old, 0, 0, 0, 3) && // HD (main menu)
 		// disallow starting after GOA in gobbo hub or secret hub (invalid spawn)
 		!(
 			// was on GOA screen
@@ -612,7 +811,7 @@ start
 			current.TypeB4GH == current.CurType
 		) &&
 		// disallow starting on doing a wrong warp (invalid spawn)
-		!vars.IsWrongWarp(old, current))
+		!(vars.era == "OG" && vars.IsWrongWarp(old, current)))
 	{
 		return true;
 	}
@@ -633,7 +832,7 @@ start
 			// SMP
 			vars.IsShopMap(old) ||
 			// anywhere, as long as the cheat menu was used
-			old.IsCheatMenuOpen == 1
+			old.IsCheatMenuOpen
 		) &&
 		// now in one of these places
 		(
@@ -647,8 +846,7 @@ start
 	}
 }
 
-split
-{
+split {
 	// Split on literally any map change
 	if (settings["SplitOnMapChange_literal"] &&
 		vars.HasMapIDChanged(old, current))
@@ -658,8 +856,7 @@ split
 	
 	// Cancel if main state is not "running" or
 	// current tribe is not an ingame tribe
-	const int MainState_Running = 11;
-	if (current.MainState != MainState_Running ||
+	if (current.MainState != vars.MainState_Running ||
 		current.CurTribe < 1 || current.CurTribe > 5)
 	{
 		((IDictionary<string, object>)current).Remove("ProgressList");
@@ -673,6 +870,7 @@ split
 		// was on GOA screen
 		vars.IsThisMap(old, 0, 0, 2, 3) &&
 		// disallow split after GOAing in gobbo hub or secret hub (invalid spawn)
+		// FIXME: this might not be working properly in HD; I just got a split after GOA in caveman hub
 		!(
 			(
 				vars.IsGobboHub(current) ||
@@ -703,9 +901,8 @@ split
 	
 	// Read progress list
 	const int ProgressListSize = 0xf0;
-	const int ProgressListOffset = 0x2d0;
-	var addrProgressList = vars.addrSaveSlot + ProgressListOffset;
-	current.ProgressList = memory.ReadBytes((IntPtr)addrProgressList, ProgressListSize);
+	vars.AddrProgressList = vars.AddrSaveSlot + vars.ProgressListOffset;
+	current.ProgressList = memory.ReadBytes((IntPtr)vars.AddrProgressList, ProgressListSize);
 
 	// Cancel if old progress list is not available
 	if (!((IDictionary<string, object>)old).ContainsKey("ProgressList")) return false;
@@ -713,6 +910,8 @@ split
 	// IL/OTS end
 	if (settings["SplitOnMapChange"] &&
 		vars.HasMapIDChanged(old, current) &&
+		// disallow a split coming out of the main menu
+		!vars.IsThisMap(old, 0, 0, 0, 3) &&
 		// disallow the split after the opening cutscene when you start a new game
 		!vars.IsThisMap(old, 1, 1, 2, 3) &&
 		// disallow the split between dante and ending cutscene
@@ -725,7 +924,8 @@ split
 			current.CurType == 1
 		) &&
 		// disallow when re-entering for wrong warp
-		!(
+		// (not relevant for HD, cos you can only WW in OG (afaik...))
+		!(vars.era == "OG" &&(
 			// General case
 			(
 				vars.IsGobboHub(old) && !vars.IsGobboHub(current) &&
@@ -754,9 +954,9 @@ split
 				// masher objective is complete
 				current.ProgressList[129] % 2 == 1
 			)
-		) &&
+		)) &&
 		// disallow when doing a wrong warp (invalid spawn)
-		!vars.IsWrongWarp(old, current))
+		!(vars.era == "OG" && vars.IsWrongWarp(old, current)))
 	{		
 		return true;
 	}
@@ -765,10 +965,8 @@ split
 	// note that this is a suboption of objective style splits
 	// (because it is redundant to use it with IL style splits)
 	if (settings["SplitOnSMPEntry"] &&
-		// was in hub
-		vars.IsGobboHub(old) &&
-		// now in SMP
-		vars.IsShopMap(current) &&
+		// was in hub, now in SMP
+		vars.IsGobboHub(old) && vars.IsShopMap(current) &&
 		// restrict to sailor through caveman
 		// (inca ends on yellow dante crystal; secret ends on final egg)
 		current.CurTribe >= 1 && current.CurTribe <= 3)
@@ -793,7 +991,8 @@ split
 	}
 
 	// "Dante's Final Fight": Split when last crystal is placed
-	if (vars.IsThisMap(current, 4, 2, 1, 1))
+	// FIXME: fix for HD
+	if (vars.IsThisMap(current, 4, 2, 1, 1) && vars.era == "OG")
 	{
 		if (old.DFCrystal5IP != current.DFCrystal5IP && current.DFCrystal5IP ==
 			vars.ScriptCodeStart.Deref<int>(game) + vars.DFCrystal5FinalIP)
@@ -876,10 +1075,13 @@ split
 	}
 }
 
-isLoading
-{
-	const int MainState_Running = 11;
-	return current.MainState == MainState_Running && (
+isLoading {
+	// FIXME: check/compare HD vs OG
+	// 	Particularly IsMapLoaded timing, and particularly GOA
+	// FIXME: we might have been missing GOA loads cos mainstate != running? oops...
+	// FIXME: is there any reason to enforce mainstate == running anyways?
+	// 	if there is a load when doing SQ / GOA etc a load is still a load...?
+	return current.MainState == vars.MainState_Running && (
 		current.InGameState == 6 || current.InGameState == 7 ||
 		!current.IsMapLoaded);
 }
