@@ -7,7 +7,7 @@ state("Croc2", "US") {
 	int CurMap              : 0xA8C4C;
 	int CurType             : 0xA8C50;
 	int InGameState         : 0xB7880;
-	bool IsCheatMenuOpen     : 0xB788C;
+	bool IsCheatMenuOpen    : 0xB788C;
 	bool IsMapLoaded        : 0xB78C4;
 	int NewMainState        : 0xB7930;
 	int IsNewMainStateValid : 0xB7934;
@@ -29,7 +29,7 @@ state("Croc2", "EU") {
 	int CurMap              : 0xA9C4C;
 	int CurType             : 0xA9C50;
 	int InGameState         : 0xBEA70;
-	bool IsCheatMenuOpen     : 0xBEA7C;
+	bool IsCheatMenuOpen    : 0xBEA7C;
 	bool IsMapLoaded        : 0xBEAB4;
 	int NewMainState        : 0xBEB20;
 	int IsNewMainStateValid : 0xBEB24;
@@ -52,12 +52,15 @@ state("croc2", "HD-STEAM")
 	int CurMap              : 0xBC87DC;
 	int CurType             : 0xBC87E0;
 	int InGameState         : 0xB90D30;
-	bool IsCheatMenuOpen     : 0xB8E0F8;
+	bool IsCheatMenuOpen    : 0xB8E0F8;
 		// OG (int):  menu closed = 0, open = 1
 		// HD (int):  menu closed = 0, open = 0xFFFFFFFF (or, -1)
 		// Switching this to a bool, so behaviour is the same between OG and HD
 	bool IsMapLoaded        : 0xBCE790;
 		// FIXME: candidate. need to verify. 0xBCE894 also looks promising
+		// FIXME: seems to get triggered in a variety of transitions in roger.
+		//			also gets briefly triggered at the start of the cossack iceblock final cutscene.
+		//			how does OG compare? and do any other levels do that?
 	int NewMainState        : 0xB90D3C;
 	// int IsNewMainStateValid : 0xB7934;
 		// FIXME: find this for save slot start, if you can
@@ -320,6 +323,7 @@ init {
 			vars.MainState_ContinueYN     =  3; // "Continue? Yes / No" screen when you game over
 			vars.MainState_GameOver       = 12; // "Game Over" screen (when you run out of lives and select "No" on the "Continue?" screen, or when you exit the game from the pause menu)
 			vars.MainState_Credits		  =  4;
+			// vars.MainState_Credits2Inca   = ??; // FIXME: see if this exists in OG
 			vars.MainState_ExitGame       =  6;
 			break;
 		
@@ -345,6 +349,7 @@ init {
 			vars.MainState_ContinueYN     = 09;
 			// vars.MainState_GameOver is not in HD; selecting no on ContinueYN takes you straight to main menu
 			vars.MainState_Credits		  = 12;
+			vars.MainState_Credits2Inca   = 16; // After you beat dante, the transition from the credits back into inca village
 			// vars.MainState_ExitGame doesn't seem to be a thing; the game just quits
 			break;
 
