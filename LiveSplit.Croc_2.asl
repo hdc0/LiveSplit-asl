@@ -17,7 +17,6 @@ state("Croc2", "US") {
 	int GobboCounter        : 0x12AEE0;
 	int AllowReturnToHub    : 0x12AEFC;
 	int CurSaveSlotIdx      : 0x2220FC;
-	int DFCrystal5IP        : 0x223D10;
 }
 
 state("Croc2", "EU") {
@@ -39,7 +38,6 @@ state("Croc2", "EU") {
 	int GobboCounter        : 0x1320D0;
 	int AllowReturnToHub    : 0x1320EC;
 	int CurSaveSlotIdx      : 0x2292EC;
-	int DFCrystal5IP        : 0x22AF00;
 }
 
 state("croc2", "HD-STEAM")
@@ -74,8 +72,6 @@ state("croc2", "HD-STEAM")
 		// only used for wrong warp detection (which I don't think is even possible in HD?)
 	int CurSaveSlotIdx      : 0xB4D5A8;
 		// FIXME: do we use this for anything in HD? if not, then let's just comment it out
-	// int DFCrystal5IP        : 0x223D10;
-		// FIXME: this is gonna be important for any% end split, I assume
 }
 
 startup {
@@ -206,6 +202,63 @@ startup {
 		state1.CurTribe != state2.CurTribe || state1.CurLevel != state2.CurLevel ||
 		state1.CurMap != state2.CurMap || state1.CurType != state2.CurType);
 
+	vars.AllDFCrystalsJustPlaced = new Func<Process, dynamic, bool>((Memory, Vars) =>
+	{
+		// In "Dante's Final Fight", we cannot simply monitor the objective
+		// completion flag to detect the split, as there is an unacceptable
+		// delay between the placement of the final crystal and the flag being set.
+		// Instead, we take advantage of the unique occurrence of a specific
+		// short byte pattern within this map's ASL bytecode.
+		// Once a crystal is successfully placed, its program counter remains
+		// indefinitely at the memory address where this byte pattern is located.
+		// For split detection, we therefore iterate over all strats and count
+		// how many of them currently have their program counter pointing to
+		// this byte pattern. Once this count reaches 5, we trigger the split.
+
+		bool allCrystalsPlaced = false;
+		int crystalStratsAtFinalPC = 0;
+		var expectedBytes = new byte[] {
+			0x0A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x28 };
+		IntPtr strat;
+		if (!Vars.PtrToFirstStrat.DerefOffsets(Memory, out strat))
+			return false;
+		for
+		(
+			;
+			strat != IntPtr.Zero;
+			strat = Memory.ReadPointer(strat + (int)Vars.OffsetOfPtrToNextStrat)
+		)
+		{
+			var pc = Memory.ReadPointer(strat + (int)Vars.OffsetOfStratPCField);
+			if (pc == IntPtr.Zero)
+				continue;
+			var bytesAtPC = Memory.ReadBytes(pc, expectedBytes.Length);
+			if (bytesAtPC == null)
+				continue;
+			int byteIdx;
+			for (byteIdx = 0; byteIdx < bytesAtPC.Length; ++byteIdx)
+			{
+				if (bytesAtPC[byteIdx] != expectedBytes[byteIdx])
+					break;
+			}
+			if (byteIdx < bytesAtPC.Length)
+				continue;
+			if (++crystalStratsAtFinalPC == 5)
+			{
+				allCrystalsPlaced = true;
+				break;
+			}
+		}
+
+		object wereAllCrystalsPlaced;
+		((IDictionary<string, object>)Vars).TryGetValue(
+			"AllDFCrystalsPlaced", out wereAllCrystalsPlaced);
+		Vars.AllDFCrystalsPlaced = allCrystalsPlaced;
+
+		return allCrystalsPlaced &&
+			(wereAllCrystalsPlaced == null || !(bool)wereAllCrystalsPlaced);
+	});
+
 	// Returns true iff map has specified map ID
 	vars.IsThisMap = new Func<dynamic, int, int, int, int, bool>(
 		(state, tribe, level, map, type) =>
@@ -248,34 +301,30 @@ init {
 		case 0x23A000:
 			version = "US";
 			vars.era = "OG";
-			addrScriptMgr = 0xB78BC;
 			vars.AddrCurTribe       = baseAddr + 0xA8C44;
 			vars.AddrCurLevel       = baseAddr + 0xA8C48;
 			vars.AddrCurMap         = baseAddr + 0xA8C4C;
 			vars.AddrCurType        = baseAddr + 0xA8C50;
 			vars.AddrSaveSlots      = baseAddr + 0x2040C0;
 			vars.AddrUsedBossWarps  = baseAddr + 0x222D50;
-			vars.DFCrystal5FinalIP  = 0x1741C8;
+			vars.PtrToFirstStrat = new DeepPointer(baseAddr + 0xB78BC, 0x20);
 			break;
 
 		case 0x242000:
 			version = "EU";
 			vars.era = "OG";
-			addrScriptMgr = 0xBEAAC;
 			vars.AddrCurTribe       = baseAddr + 0xA9C44;
 			vars.AddrCurLevel       = baseAddr + 0xA9C48;
 			vars.AddrCurMap         = baseAddr + 0xA9C4C;
 			vars.AddrCurType        = baseAddr + 0xA9C50;
 			vars.AddrSaveSlots      = baseAddr + 0x20B2B0;
 			vars.AddrUsedBossWarps  = baseAddr + 0x229F40;
-			vars.DFCrystal5FinalIP  = 0x174210;
+			vars.PtrToFirstStrat = new DeepPointer(baseAddr + 0xBEAAC, 0x20);
 			break;
 
 		case 0xC80000:
 			version = "HD-STEAM";
 			vars.era = "HD";
-			addrScriptMgr = 0x0;
-				// FIXME: temp putting 0
 			vars.AddrCurTribe       = baseAddr + 0xBC87D4;
 			vars.AddrCurLevel       = baseAddr + 0xBC87D8;
 			vars.AddrCurMap         = baseAddr + 0xBC87DC;
@@ -286,13 +335,12 @@ init {
 				// where X is replaced with the save slot #
 			// vars.AddrUsedBossWarps  = baseAddr + 0x222D50;
 				// FIXME: surely this bug is fixed in HD?
-			// vars.DFCrystal5FinalIP  = 0x1741C8;
-				// FIXME: this is gonna be important for ending split
 			// FIXME: in addition to the traditional CurWAD addresses, we found these NewWAD addresses, which contain the WAD being loaded. as of writing, they are used for HD save slot start logic. think about if these could be useful for race condition prevention (or for other parts of the autosplitter). also, are they present in og?
 			vars.AddrNewTribe       = baseAddr + 0xBA9B04;
 			vars.AddrNewLevel       = baseAddr + 0xBA9B08;
 			vars.AddrNewMap         = baseAddr + 0xBA9B0C;
 			vars.AddrNewType        = baseAddr + 0xBA9B10;
+			vars.PtrToFirstStrat = new DeepPointer(baseAddr + 0xBC7D20, 0);
 			break;
 
 		default:
@@ -303,6 +351,8 @@ init {
 	// FIXME: compare MainState behaviour with og
 	// - timing of MainState changes, relative to wad ID etc (particularly Running)
 	// - value of MainState in cutscene vs main gameplay vs title screen demos
+	vars.OffsetOfStratPCField = game.Is64Bit() ? 0x000 : 0x00C;
+	vars.OffsetOfPtrToNextStrat = game.Is64Bit() ? 0x008 : 0x000;
 	switch ((string)vars.era)
 	{
 		case "OG":
@@ -357,17 +407,6 @@ init {
 			return;
 	}
 
-	// FIXME; temp workaround for unknown address
-	// this is important! used for ending split on dante yellow crystal
-	if(version == "HD-STEAM")
-	{
-		print("FIXME: skipping vars.ScriptCodeStart");
-	}
-	else
-	{
-		vars.ScriptCodeStart = new DeepPointer(addrScriptMgr, 0x1C);
-	}
-	
 	// Initialize variable for speed display
 	vars.curMS = 0;
 	
@@ -995,12 +1034,10 @@ split {
 		return true;
 	}
 
-	// "Dante's Final Fight": Split when last crystal is placed
-	// FIXME: fix for HD
-	if (vars.IsThisMap(current, 4, 2, 1, 1) && vars.era == "OG")
+	// "Dante's Final Fight": Split when all crystals are placed
+	if (vars.IsThisMap(current, 4, 2, 1, 1))
 	{
-		if (old.DFCrystal5IP != current.DFCrystal5IP && current.DFCrystal5IP ==
-			vars.ScriptCodeStart.Deref<int>(game) + vars.DFCrystal5FinalIP)
+		if (vars.AllDFCrystalsJustPlaced(memory, vars))
 		{
 			return true;
 		}
